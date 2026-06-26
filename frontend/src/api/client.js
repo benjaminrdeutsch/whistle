@@ -15,7 +15,6 @@ async function request(path, options = {}) {
 export const api = {
   startSet: (body) => request('/sets', { method: 'POST', body: JSON.stringify(body) }),
   getSet: (setId) => request(`/sets/${setId}`),
-  serve: (setId) => request(`/sets/${setId}/serve`, { method: 'POST' }),
   rally: (setId, winner) =>
     request(`/sets/${setId}/rally`, { method: 'POST', body: JSON.stringify({ winner }) }),
   substitution: (setId, body) =>

@@ -3,7 +3,6 @@ import { ROMANS } from './ScoreSheet'
 
 export default function ScoringControls({
   state,
-  onServe,
   onRally,
   onTimeout,
   onSub,
@@ -62,14 +61,6 @@ export default function ScoringControls({
       </p>
 
       <div className="action-row">
-        <button
-          type="button"
-          className="btn btn-purple"
-          onClick={onServe}
-          disabled={loading || state.completed}
-        >
-          Serve contact
-        </button>
         <button
           type="button"
           className="btn btn-gold"

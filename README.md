@@ -58,15 +58,13 @@ Open http://localhost:5173 — the Vite dev server proxies `/api` to FastAPI.
 ## Scoring flow
 
 1. Enter both lineups in **serving order** (I–VI), libero numbers, set number, and first server.
-2. Tap **Serve contact** when the server contacts the ball (circle, or triangle if libero).
-3. Tap which team **won the rally** — the engine records slash/box/dash-bar notation.
-4. Record **substitutions**, **timeouts**, and **libero in/out** between rallies.
-5. **Undo** walks back one event.
+2. Tap which team **won the rally** — serve circles/triangles are inferred automatically from possession.
+3. Record **substitutions**, **timeouts**, and **libero in/out** between rallies.
+4. **Undo** walks back one event.
 
 ## API (per set)
 
 - `POST /api/sets` — start a new set sheet
-- `POST /api/sets/{id}/serve` — serve contact
 - `POST /api/sets/{id}/rally` — `{ "winner": "home" | "away" }`
 - `POST /api/sets/{id}/substitution` — `{ "team", "entering", "leaving" }`
 - `POST /api/sets/{id}/timeout` — `{ "team" }`
@@ -76,9 +74,7 @@ Open http://localhost:5173 — the Vite dev server proxies `/api` to FastAPI.
 
 ## Not in v1
 
-- Penalties / misconduct
-- Match-level persistence (in-memory sessions only)
-- Print/PDF export
+See [TODO.md](TODO.md) for the full backlog.
 
 ## Reference
 

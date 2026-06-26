@@ -70,7 +70,6 @@ function App() {
           <ScoringControls
             state={state}
             loading={loading}
-            onServe={() => run(async () => apply(await api.serve(setId)))}
             onRally={(winner) => run(async () => apply(await api.rally(setId, winner)))}
             onTimeout={(team) => run(async () => apply(await api.timeout(setId, team)))}
             onSub={(body) => run(async () => apply(await api.substitution(setId, body)))}

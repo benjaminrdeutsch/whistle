@@ -52,18 +52,6 @@ def get_set(set_id: str) -> SetStateResponse:
     return _response(set_id, session.engine())
 
 
-@router.post("/{set_id}/serve", response_model=SetStateResponse)
-def record_serve(set_id: str) -> SetStateResponse:
-    session = _require_session(set_id)
-    engine = session.engine()
-    try:
-        engine.record_serve_contact()
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    session.sync_events(engine)
-    return _response(set_id, engine)
-
-
 @router.post("/{set_id}/rally", response_model=SetStateResponse)
 def record_rally(set_id: str, body: RallyRequest) -> SetStateResponse:
     session = _require_session(set_id)

@@ -105,7 +105,7 @@ class SetEngine:
         serving_team.active_service_row = _server_service_row(serving_team)
         return cls(state)
 
-    def record_rally(self, winner: TeamSide) -> RallyRecord:
+    def record_rally(self, winner: TeamSide, *, imply_serve: bool = True) -> RallyRecord:
         if self.state.completed:
             raise ValueError("Set is already complete")
 
@@ -116,6 +116,11 @@ class SetEngine:
 
         marks: list[ScoringMark] = []
         running: list[RunningScoreMark] = []
+
+        # Every rally begins with a serve by the team in possession.
+        if imply_serve:
+            marks.extend(self._serve_contact_marks(serving))
+
         libero_serving = _is_libero_serving(serving_team)
         service_row = _server_service_row(serving_team)
 
@@ -286,64 +291,19 @@ class SetEngine:
         self._append_event(event)
         return event
 
-    def mark_libero_serve_position(self, team_side: TeamSide) -> SetEvent:
-        """First libero serve in a set — triangle around the service-order Roman numeral."""
-        team = self.state.team(team_side)
-        if team.libero_number is None:
-            raise ValueError("No libero designated")
-        if team.libero_serve_row is not None:
-            raise ValueError("Libero serve position already marked")
-
-        if not _is_libero_serving(team):
-            raise ValueError("Libero is not the current server")
-
-        row = _server_service_row(team)
-        team.libero_serve_row = row
-        mark = ScoringMark("libero_position_marker", team_side, row)
-        event = SetEvent(
-            type="libero_serve_position",
-            payload={"team": team_side.value, "row": row},
-            marks=[mark],
-        )
-        self._append_event(event)
-        return event
-
-    def ensure_libero_serve_marked(self, team: TeamState, team_side: TeamSide) -> list[ScoringMark]:
-        if not _is_libero_serving(team) or team.libero_serve_row is not None:
-            return []
-        row = _server_service_row(team)
-        team.libero_serve_row = row
-        mark = ScoringMark("libero_position_marker", team_side, row)
-        event = SetEvent(
-            type="libero_serve_position",
-            payload={"team": team_side.value, "row": row},
-            marks=[mark],
-        )
-        self._append_event(event)
-        return [mark]
-
-    def record_serve_contact(self) -> SetEvent:
-        team_side = self.state.serving
+    def _serve_contact_marks(self, team_side: TeamSide) -> list[ScoringMark]:
+        """Infer serve contact from possession: the serving team always contacts first."""
         team = self.state.team(team_side)
         row = _server_service_row(team)
-        libero = _is_libero_serving(team)
-        extra: list[ScoringMark] = []
+        marks: list[ScoringMark] = []
 
-        if libero:
-            extra = self.ensure_libero_serve_marked(team, team_side)
-            kind = "serve_triangle"
-        else:
-            kind = "serve_circle"
+        if _is_libero_serving(team) and team.libero_serve_row is None:
+            team.libero_serve_row = row
+            marks.append(ScoringMark("libero_position_marker", team_side, row))
 
-        mark = ScoringMark(kind, team_side, row)
-        marks = extra + [mark]
-        event = SetEvent(
-            type="serve_contact",
-            payload={"team": team_side.value},
-            marks=marks,
-        )
-        self._append_event(event)
-        return event
+        kind = "serve_triangle" if _is_libero_serving(team) else "serve_circle"
+        marks.append(ScoringMark(kind, team_side, row))
+        return marks
 
     def _append_event(self, event: SetEvent) -> None:
         if self._record_events:
@@ -409,7 +369,11 @@ def replay_set(
 def _apply_event(engine: SetEngine, event: SetEvent) -> None:
     payload = event.payload
     if event.type == "rally":
-        engine.record_rally(TeamSide(payload["winner"]))
+        has_serve = any(
+            m.kind in ("serve_circle", "serve_triangle", "libero_position_marker")
+            for m in event.marks
+        )
+        engine.record_rally(TeamSide(payload["winner"]), imply_serve=not has_serve)
     elif event.type == "substitution":
         engine.record_substitution(
             TeamSide(payload["team"]),
@@ -423,9 +387,12 @@ def _apply_event(engine: SetEngine, event: SetEvent) -> None:
     elif event.type == "libero_out":
         engine.record_libero_exit(TeamSide(payload["team"]))
     elif event.type == "serve_contact":
-        engine.record_serve_contact()
+        # Legacy sessions recorded serve as a separate step before the rally.
+        team = TeamSide(payload.get("team", engine.state.serving.value))
+        engine._serve_contact_marks(team)
     elif event.type == "libero_serve_position":
-        engine.mark_libero_serve_position(TeamSide(payload["team"]))
+        team = engine.state.team(TeamSide(payload["team"]))
+        team.libero_serve_row = payload["row"]
 
 
 def _state_to_dict(state: SetState) -> dict:
